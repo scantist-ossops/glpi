@@ -109,7 +109,7 @@ function display_infocoms_report($itemtype, $begin, $end)
      */
     global $CFG_GLPI, $DB, $valeurtot, $valeurnettetot, $valeurnettegraphtot, $valeurgraphtot, $stat, $chart_opts;
 
-    $itemtable = getTableForItemType($itemtype);
+    $itemtable = $itemtype::getTable();
    // report need name and ticket_tco, many asset type don't have it therefore are not compatible
     if (!$DB->fieldExists($itemtable, "ticket_tco", false)) {
         return false;
