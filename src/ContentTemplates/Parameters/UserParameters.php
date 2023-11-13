@@ -133,12 +133,7 @@ class UserParameters extends AbstractParameters
         $values['used_items'] = [];
         foreach ($CFG_GLPI["asset_types"] as $asset_type) {
             $item = new $asset_type();
-            $asset_items_data = $item->find(
-                array_merge(
-                    $item->getSystemSQLCriteria(),
-                    ['users_id' => $fields['id']]
-                )
-            );
+            $asset_items_data = $item->find(['users_id' => $fields['id']] + $item->getSystemSQLCriteria());
             foreach ($asset_items_data as $asset_item_data) {
                 $asset_parameters = new AssetParameters();
                 if ($asset_item = $item::getById($asset_item_data['id'])) {

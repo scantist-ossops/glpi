@@ -285,7 +285,7 @@ class Html extends \GLPITestCase
             'PassiveDCEquipment',
             'Unmanaged',
             'Cable',
-            'Item_DeviceSimcard',
+            'Item_DeviceSimcard'
         ];
         $this->string($menu['assets']['title'])->isIdenticalTo('Assets');
         $this->array($menu['assets']['types'])->isIdenticalTo($expected);

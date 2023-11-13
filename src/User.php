@@ -5152,14 +5152,11 @@ JAVASCRIPT;
                 $itemtable = getTableForItemType($itemtype);
                 $iterator_params = [
                     'FROM'   => $itemtable,
-                    'WHERE'  => array_merge(
-                        $item->getSystemSQLCriteria(),
-                        [
-                            'OR' => [
-                                $field_user => $ID
-                            ] + $group_where
-                        ]
-                    ),
+                    'WHERE'  => [
+                        'OR' => [
+                            $field_user => $ID
+                        ] + $group_where
+                    ] + $item->getSystemSQLCriteria(),
                 ];
 
                 if ($item->maybeTemplate()) {

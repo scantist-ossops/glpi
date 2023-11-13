@@ -765,7 +765,8 @@ abstract class CommonItilObject_Item extends CommonDBRelation
                         'FROM'   => $itemtable,
                         'WHERE'  => [
                             'users_id' => $userID
-                        ] + getEntitiesRestrictCriteria($itemtable, '', $entity_restrict, $item->maybeRecursive()),
+                        ] + getEntitiesRestrictCriteria($itemtable, '', $entity_restrict, $item->maybeRecursive())
+                          + $itemtype::getSystemSQLCriteria(),
                         'ORDER'  => $item->getNameField()
                     ];
 
@@ -851,7 +852,8 @@ abstract class CommonItilObject_Item extends CommonDBRelation
                                 'FROM'   => $itemtable,
                                 'WHERE'  => [
                                     'groups_id' => $groups
-                                ] + getEntitiesRestrictCriteria($itemtable, '', $entity_restrict, $item->maybeRecursive()),
+                                ] + getEntitiesRestrictCriteria($itemtable, '', $entity_restrict, $item->maybeRecursive())
+                                  + $itemtype::getSystemSQLCriteria(),
                                 'ORDER'  => $item->getNameField()
                             ];
 

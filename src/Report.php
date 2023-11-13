@@ -211,13 +211,9 @@ class Report extends CommonGLPI
             $criteria = [
                 'COUNT'  => 'cpt',
                 'FROM'   => $table_item,
-                'WHERE'  => array_merge(
-                    $itemtype::getSystemSQLCriteria(),
-                    [
-                        "$table_item.is_deleted"   => 0
-                    ],
-                    getEntitiesRestrictCriteria($table_item)
-                )
+                'WHERE'  => [
+                    "$table_item.is_deleted"   => 0
+                ] + getEntitiesRestrictCriteria($table_item) + $itemtype::getSystemSQLCriteria()
             ];
 
             $itemtype_object = new $itemtype();
@@ -309,13 +305,9 @@ class Report extends CommonGLPI
                         ]
                     ]
                 ],
-                'WHERE'     => array_merge(
-                    $itemtype::getSystemSQLCriteria(),
-                    [
-                        "$table_item.is_deleted"   => 0
-                    ],
-                    getEntitiesRestrictCriteria($table_item)
-                ),
+                'WHERE'     => [
+                    "$table_item.is_deleted"   => 0
+                ] + getEntitiesRestrictCriteria($table_item) + $itemtype::getSystemSQLCriteria(),
                 'GROUPBY'   => "$type_table.name"
             ];
 

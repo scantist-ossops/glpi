@@ -456,9 +456,15 @@ abstract class Asset extends CommonDBTM
     public static function getSystemSQLCriteria(): array
     {
         // Keep only items from current definition must be shown.
-        return [
+        $criteria = [
             AssetDefinition::getForeignKeyField() => static::getDefinition()->getID(),
         ];
+
+        // Add another layer to the array to prevent losing duplicates keys if the
+        // result of the function is merged with another array.
+        $criteria = [crc32(serialize($criteria)) => $criteria];
+
+        return $criteria;
     }
 
     public static function getSystemSearchCriteria(): array
