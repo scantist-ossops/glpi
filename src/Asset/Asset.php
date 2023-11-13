@@ -55,12 +55,6 @@ abstract class Asset extends CommonDBTM
      */
     private const DEFINITION_SO_ID = 250;
 
-    /**
-     * Definition that corresponds to the concrete class.
-     * @var AssetDefinition
-     */
-    protected static AssetDefinition $definition;
-
     final public function __construct()
     {
         foreach (static::getDefinition()->getEnabledCapacities() as $capacity) {
@@ -75,6 +69,10 @@ abstract class Asset extends CommonDBTM
      */
     public static function getDefinition(): AssetDefinition
     {
+        if (!property_exists(static::class, 'definition')) {
+            throw new \RuntimeException('Asset definition is expected to de defined in concrete class.');
+        }
+
         return static::$definition;
     }
 

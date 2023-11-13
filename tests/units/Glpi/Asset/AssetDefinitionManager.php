@@ -42,6 +42,7 @@ class AssetDefinitionManager extends \GLPITestCase
     public function testLoadConcreteClass(): void
     {
         // use a loop to simulate multiple classes
+        $mapping = [];
         for ($i = 0; $i < 5; $i++) {
             $definition = new AssetDefinition();
             $definition->fields = [
@@ -54,6 +55,10 @@ class AssetDefinitionManager extends \GLPITestCase
             $instance = \Glpi\Asset\AssetDefinitionManager::getInstance();
             $this->callPrivateMethod($instance, 'loadConcreteClass', $definition);
 
+            $mapping[$expected_classname] = $definition;
+        }
+
+        foreach ($mapping as $expected_classname => $definition) {
             $this->boolean(class_exists($expected_classname))->isTrue();
             $this->object($expected_classname::getDefinition())->isEqualTo($definition);
         }

@@ -252,7 +252,9 @@ final class AssetDefinitionManager
     {
         eval(<<<PHP
 namespace Glpi\Asset;
-final class {$definition->getConcreteClassName(false)} extends Asset {}
+final class {$definition->getConcreteClassName(false)} extends Asset {
+    protected static AssetDefinition \$definition;
+}
 PHP
         );
 

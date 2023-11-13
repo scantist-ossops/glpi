@@ -41,6 +41,7 @@ use Glpi\Application\View\TemplateRenderer;
 use Glpi\Asset\Capacity\CapacityInterface;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
+use Profile;
 use Session;
 
 final class AssetDefinition extends CommonDBTM
@@ -84,6 +85,8 @@ final class AssetDefinition extends CommonDBTM
         if ($item instanceof self) {
             return [
                 1 => self::createTabEntry(__('Capacities'), 0, self::class, 'ti ti-adjustments'),
+                // 2 is reserved for "Fields"
+                3 => self::createTabEntry(_n('Profile', 'Profiles', Session::getPluralNumber()), 0, self::class, 'ti ti-user-check'),
             ];
         }
 
@@ -93,7 +96,14 @@ final class AssetDefinition extends CommonDBTM
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
         if ($item instanceof self) {
-            $item->showCapacitiesForm();
+            switch ($tabnum) {
+                case 1:
+                    $item->showCapacitiesForm();
+                break;
+                case 3:
+                    $item->showProfilesForm();
+                break;
+            }
         }
         return true;
     }
@@ -109,7 +119,7 @@ final class AssetDefinition extends CommonDBTM
     }
 
     /**
-     * Display capacity form.
+     * Display capacities form.
      *
      * @return void
      */
@@ -123,10 +133,79 @@ final class AssetDefinition extends CommonDBTM
         ]);
     }
 
+    /**
+     * Display profiles form.
+     *
+     * @return void
+     */
+    private function showProfilesForm(): void
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $possible_rights = $this->getPossibleAssetRights();
+        $profiles_data   = iterator_to_array(
+            $DB->request([
+                'SELECT' => ['id', 'name'],
+                'FROM'   => Profile::getTable(),
+            ])
+        );
+
+        $nb_cb_per_col = array_fill_keys(
+            array_keys($possible_rights),
+            [
+                'checked' => 0,
+                'total' => count($profiles_data),
+            ]
+        );
+        $nb_cb_per_row = [];
+
+        $matrix_rows = [];
+        foreach ($profiles_data as $profile_data) {
+            $profile_id = $profile_data['id'];
+            $profile_rights = $this->getEnabledRightsForProfile($profile_id);
+
+            $checkbox_key = sprintf('profiles[%d]', $profile_id);
+
+            $nb_cb_per_row[$checkbox_key] = [
+                'checked' => 0,
+                'total' => count($possible_rights),
+            ];
+
+            $row = [
+                'label' => $profile_data['name'],
+                'columns' => []
+            ];
+            foreach (array_keys($possible_rights) as $right_value) {
+                $checked = in_array($right_value, $profile_rights, true);
+                $row['columns'][$right_value] = [
+                    'checked' => $checked,
+                ];
+
+                if ($checked) {
+                    $nb_cb_per_row[$checkbox_key]['checked']++;
+                    $nb_cb_per_col[$right_value]['checked']++;
+                }
+            }
+            $matrix_rows[$checkbox_key] = $row;
+        }
+
+        TemplateRenderer::getInstance()->display('pages/admin/assetdefinition/profiles.html.twig', [
+            'item'           => $this,
+            'matrix_columns' => $possible_rights,
+            'matrix_rows'    => $matrix_rows,
+            'nb_cb_per_col'  => $nb_cb_per_col,
+            'nb_cb_per_row'  => $nb_cb_per_row,
+        ]);
+    }
+
     public function prepareInputForAdd($input)
     {
         if (!array_key_exists('capacities', $input)) {
             $input['capacities'] = []; // ensure default capacities value will be a valid array
+        }
+        if (!array_key_exists('profiles', $input)) {
+            $input['profiles'] = []; // ensure default profiles value will be a valid array
         }
         return $this->prepareInput($input);
     }
@@ -144,6 +223,9 @@ final class AssetDefinition extends CommonDBTM
      */
     private function prepareInput(array $input): array|bool
     {
+        /** @var \DBmysql $DB */
+        global $DB;
+
         if (array_key_exists('capacities', $input)) {
             $is_valid = true;
             if (!is_array($input['capacities'])) {
@@ -173,6 +255,45 @@ final class AssetDefinition extends CommonDBTM
             }
             $input['capacities'] = json_encode($input['capacities']);
         }
+
+        if (array_key_exists('profiles', $input)) {
+            $is_valid = true;
+            if (!is_array($input['profiles'])) {
+                $is_valid = false;
+            } else {
+                $profiles_iterator = $DB->request([
+                    'SELECT' => ['id'],
+                    'FROM'   => Profile::getTable(),
+                ]);
+                $available_profiles = array_column(iterator_to_array($profiles_iterator), 'id');
+                $possible_rights    = array_keys($this->getPossibleAssetRights());
+                foreach ($input['profiles'] as $profile_id => $rights) {
+                    if (!in_array($profile_id, $available_profiles)) {
+                        $is_valid = false;
+                        break;
+                    }
+                    foreach (array_keys($rights) as $right_value) {
+                        if (!in_array($right_value, $possible_rights)) {
+                            $is_valid = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!$is_valid) {
+                Session::addMessageAfterRedirect(
+                    sprintf(
+                        __('The following field has an incorrect value: "%s".'),
+                        _n('Profile', 'Profiles', Session::getPluralNumber())
+                    ),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+            $input['profiles'] = json_encode($input['profiles']);
+        }
+
         return $input;
     }
 
@@ -214,8 +335,16 @@ final class AssetDefinition extends CommonDBTM
      */
     public function hasRightOnAssets(int $right): bool
     {
-        // TODO Fine-grain rights management.
-        return true;
+        $profile_id = $_SESSION['glpiactiveprofile']['id'] ?? null;
+        if ($profile_id === null) {
+            return false;
+        }
+
+        return in_array(
+            $right,
+            $this->getEnabledRightsForProfile($profile_id),
+            true
+        );
     }
 
     /**
@@ -242,11 +371,10 @@ final class AssetDefinition extends CommonDBTM
 
     public function rawSearchOptions()
     {
-        /** @var \DBmysql $DB */
         $search_options = parent::rawSearchOptions();
 
         $i = 1000;
-        $tab[] = [
+        $search_options[] = [
             'id'   => 'capacities',
             'name' => __('Capacities')
         ];
@@ -279,7 +407,7 @@ final class AssetDefinition extends CommonDBTM
     }
 
     /**
-     * Get the definition's concerte asset class name.
+     * Get the definition's concrete asset class name.
      *
      * @param bool $with_namespace
      * @return string|null
@@ -300,13 +428,7 @@ final class AssetDefinition extends CommonDBTM
      */
     public function hasCapacityEnabled(CapacityInterface $capacity): bool
     {
-        $enabled_capacities = @json_decode($this->fields['capacities']);
-        if (!is_array($enabled_capacities)) {
-            trigger_error(sprintf('Invalid `capacities` value `%s`.', $this->fields['capacities']), E_USER_WARNING);
-            $this->fields['capacities'] = '[]'; // prevent warning to be triggered on each method call
-            $enabled_capacities = [];
-        }
-
+        $enabled_capacities = $this->getDecodedJsonField('capacities', 'is_array'); // TODO Use a dedicated check
         return in_array($capacity::class, $enabled_capacities);
     }
 
@@ -324,5 +446,77 @@ final class AssetDefinition extends CommonDBTM
             }
         }
         return $capacities;
+    }
+
+    /**
+     * Get the list of possible rights for the assets.
+     * @return array
+     */
+    private function getPossibleAssetRights(): array
+    {
+        $possible_rights = [
+            READ    => __('Read'),
+            UPDATE  => __('Update'),
+            CREATE  => __('Create'),
+            DELETE  => [
+                'short' => __('Delete'),
+                'long'  => _x('button', 'Put in trashbin')
+            ],
+            PURGE   => [
+                'short' => __('Purge'),
+                'long'  => _x('button', 'Delete permanently')
+            ],
+        ];
+
+        foreach ($this->getEnabledCapacities() as $capacity) {
+            // TODO (e.g. notes)
+            // TODO $possible_rights[] = $capacity->getRights();
+        }
+
+        return $possible_rights;
+    }
+
+    /**
+     * Get enabled rights for profile.
+     *
+     * @param int $profile_id
+     * @return int[]
+     */
+    private function getEnabledRightsForProfile(int $profile_id): array
+    {
+        $profiles_entries = $this->getDecodedJsonField('profiles', 'is_array'); // TODO Use a dedicated check
+
+        $enabled_rights = [];
+
+        foreach ($profiles_entries as $key => $rights) {
+            if ((int)$key === $profile_id) {
+                foreach ($rights as $right_value => $is_enabled) {
+                    if ((bool)$is_enabled) {
+                        $enabled_rights[] = $right_value;
+                    }
+                }
+                break;
+            }
+        }
+
+        return $enabled_rights;
+    }
+
+    /**
+     * Return the decoded value of a JSON field.
+     *
+     * @param string $field_name
+     * @param callable $validator
+     * @return array
+     */
+    private function getDecodedJsonField(string $field_name, ?callable $validator = null): array
+    {
+        $values = @json_decode($this->fields[$field_name], associative: true);
+        if ($validator !== null && !call_user_func($validator, $values)) {
+            trigger_error(sprintf('Invalid `%s` value (`%s`).', $field_name, $this->fields[$field_name]), E_USER_WARNING);
+            $this->fields[$field_name] = '[]'; // prevent warning to be triggered on each method call
+            $values = [];
+        }
+        return $values;
     }
 }
