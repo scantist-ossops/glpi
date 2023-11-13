@@ -99,10 +99,10 @@ final class AssetDefinition extends CommonDBTM
             switch ($tabnum) {
                 case 1:
                     $item->showCapacitiesForm();
-                break;
+                    break;
                 case 3:
                     $item->showProfilesForm();
-                break;
+                    break;
             }
         }
         return true;

@@ -262,8 +262,6 @@ PHP
         // It permits to directly store a pointer to the definition on the object without having
         // to make the property publicly writable.
         $reflected_class = new \ReflectionClass($definition->getConcreteClassName());
-        $reflected_property = $reflected_class->getProperty('definition');
-        $reflected_property->setAccessible(true);
-        $reflected_property->setValue($definition);
+        $reflected_class->setStaticPropertyValue('definition', $definition);
     }
 }
