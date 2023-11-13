@@ -73,7 +73,7 @@ abstract class Asset extends CommonDBTM
             throw new \RuntimeException('Asset definition is expected to de defined in concrete class.');
         }
 
-        return static::$definition;
+        return static::$definition ?? null;
     }
 
     public static function getTypeName($nb = 0)
