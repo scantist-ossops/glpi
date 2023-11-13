@@ -52,11 +52,6 @@ final class AssetDefinitionManager
     private array $definitions_data;
 
     /**
-     * Mapping between assets concrete classes and definitions.
-     */
-    private array $definition_mapping = [];
-
-    /**
      * List of available capacities.
      * @var CapacityInterface[]
      */
@@ -195,17 +190,6 @@ final class AssetDefinitionManager
     }
 
     /**
-     * Returns the definition that corresponds to an asset concrete class.
-     *
-     * @param string $classname
-     * @return AssetDefinition|null
-     */
-    public function getDefinitionForConcreteClass(string $classname): ?AssetDefinition
-    {
-        return $this->definition_mapping[$classname] ?? null;
-    }
-
-    /**
      * Returns available capacities instances.
      *
      * @return CapacityInterface[]
@@ -271,6 +255,13 @@ namespace Glpi\Asset;
 final class {$definition->getConcreteClassName(false)} extends Asset {}
 PHP
         );
-        $this->definition_mapping[$definition->getConcreteClassName()] = $definition;
+
+        // Set the definition of the concrete class using reflection API.
+        // It permits to directly store a pointer to the definition on the object without having
+        // to make the property publicly writable.
+        $reflected_class = new \ReflectionClass($definition->getConcreteClassName());
+        $reflected_property = $reflected_class->getProperty('definition');
+        $reflected_property->setAccessible(true);
+        $reflected_property->setValue($definition);
     }
 }

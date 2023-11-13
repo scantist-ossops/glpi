@@ -55,9 +55,15 @@ abstract class Asset extends CommonDBTM
      */
     private const DEFINITION_SO_ID = 250;
 
+    /**
+     * Definition that corresponds to the concrete class.
+     * @var AssetDefinition
+     */
+    protected static AssetDefinition $definition;
+
     final public function __construct()
     {
-        foreach ($this->getDefinition()->getEnabledCapacities() as $capacity) {
+        foreach (static::getDefinition()->getEnabledCapacities() as $capacity) {
             $capacity->onObjectInstanciation($this);
         }
     }
@@ -69,11 +75,7 @@ abstract class Asset extends CommonDBTM
      */
     public static function getDefinition(): AssetDefinition
     {
-        $definition = AssetDefinitionManager::getInstance()->getDefinitionForConcreteClass(static::class);
-        if ($definition === null) {
-            throw new \LogicException('Asset definition has not been defined.');
-        }
-        return $definition;
+        return static::$definition;
     }
 
     public static function getTypeName($nb = 0)
