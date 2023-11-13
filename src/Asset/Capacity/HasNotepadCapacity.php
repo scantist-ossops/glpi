@@ -36,38 +36,44 @@
 namespace Glpi\Asset\Capacity;
 
 use CommonGLPI;
-use Document;
-use Document_Item;
+use Glpi\Asset\Asset;
+use Notepad;
+use ReflectionClass;
 use Session;
 
-class HasDocumentsCapacity extends AbstractCapacity
+class HasNotepadCapacity extends AbstractCapacity
 {
     public function getLabel(): string
     {
-        return Document::getTypeName(Session::getPluralNumber());
+        return Notepad::getTypeName(Session::getPluralNumber());
     }
 
     public function onClassBootstrap(string $classname): void
     {
-        /** @var array $CFG_GLPI */
-        global $CFG_GLPI;
+        CommonGLPI::registerStandardTab($classname, Notepad::class, 80);
+    }
 
-        $CFG_GLPI['document_types'][] = $classname;
-
-        CommonGLPI::registerStandardTab($classname, Document_Item::class, 55);
+    public function onObjectInstanciation(Asset $object): void
+    {
+        $reflected_class = new ReflectionClass($object);
+        $reflected_property = $reflected_class->getProperty('usenotepad');
+        $reflected_property->setValue($object, true);
     }
 
     public function onCapacityDisabled(string $classname): void
     {
-        // Delete relations to documents
-        $document_item = new Document_Item();
-        $document_item->deleteByCriteria(['itemtype' => $classname], force: true, history: false);
+        // Delete related infocom data
+        $notepad = new Notepad();
+        $notepad->deleteByCriteria(['itemtype' => $classname], force: true, history: false);
 
-        // Clean history related to documents
-        $this->deleteRelationLogs($classname, Document::class);
+        $notepad_search_options = Notepad::rawSearchOptionsToAdd($classname);
+
+        // Clean history related to notepad
+        $this->deleteFieldsLogs($classname, $notepad_search_options);
 
         // Clean display preferences
-        $documents_search_options = Document::rawSearchOptionsToAdd($classname);
-        $this->deleteDisplayPreferences($classname, $documents_search_options);
+        $this->deleteDisplayPreferences($classname, $notepad_search_options);
+
+        // TODO Clean rights READNOTE/UPDATENOTE
     }
 }

@@ -454,26 +454,9 @@ final class AssetDefinition extends CommonDBTM
      */
     private function getPossibleAssetRights(): array
     {
-        $possible_rights = [
-            READ    => __('Read'),
-            UPDATE  => __('Update'),
-            CREATE  => __('Create'),
-            DELETE  => [
-                'short' => __('Delete'),
-                'long'  => _x('button', 'Put in trashbin')
-            ],
-            PURGE   => [
-                'short' => __('Purge'),
-                'long'  => _x('button', 'Delete permanently')
-            ],
-        ];
-
-        foreach ($this->getEnabledCapacities() as $capacity) {
-            // TODO (e.g. notes)
-            // TODO $possible_rights[] = $capacity->getRights();
-        }
-
-        return $possible_rights;
+        $class = $this->getConcreteClassName();
+        $object = new $class();
+        return $object->getRights();
     }
 
     /**
@@ -484,6 +467,10 @@ final class AssetDefinition extends CommonDBTM
      */
     private function getEnabledRightsForProfile(int $profile_id): array
     {
+        // TODO Refactor this part to push data into `ProfileRight`
+        // This is required to be ble to correctly handle notepad rights
+        // e.g. on save: ProfileRight::updateProfileRights($profile_id, $profile_matrix);
+
         $profiles_entries = $this->getDecodedJsonField('profiles', 'is_array'); // TODO Use a dedicated check
 
         $enabled_rights = [];
