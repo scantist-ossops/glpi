@@ -6720,9 +6720,11 @@ class CommonDBTM extends CommonGLPI
      * for instance, when fetching available dropdown values, or a list of linked items.
      * These criteria will be added in the `WHERE` conditions.
      *
+     * @param string|null $tablename    Table name to use for field in SQL query, can be used to prevent ambiguous field naming.
+     *
      * @return array
      */
-    public static function getSystemSQLCriteria(): array
+    public static function getSystemSQLCriteria(?string $tablename = null): array
     {
         return [];
     }

@@ -196,7 +196,13 @@ final class SQLProvider implements SearchProviderInterface
                 $addmeta = "_" . $meta_type;
                 $addtable  .= $addmeta;
                 $addtable2 .= $addmeta;
+            } else {
+                $meta_suffix = md5(serialize($meta_type::getSystemSQLCriteria()));
+                if ($meta_suffix !== '') {
+                    $addmeta = '_' . $meta_suffix;
+                }
             }
+            $table .= $addmeta;
         }
 
         // Plugin can override core definition for its type
@@ -1065,8 +1071,15 @@ final class SQLProvider implements SearchProviderInterface
         }
 
         $addmeta = "";
-        if ($meta && $itemtype::getTable() !== $inittable) {
-            $addmeta = "_" . $itemtype;
+        if ($meta) {
+            if ($itemtype::getTable() !== $inittable) {
+                $addmeta = "_" . $itemtype;
+            } else {
+                $meta_suffix = md5(serialize($itemtype::getSystemSQLCriteria()));
+                if ($meta_suffix !== '') {
+                    $addmeta = '_' . $meta_suffix;
+                }
+            }
             $table .= $addmeta;
         }
 
@@ -2701,8 +2714,12 @@ final class SQLProvider implements SearchProviderInterface
 
         $from_table = $from_type::getTable();
         $from_fk    = getForeignKeyFieldForTable($from_table);
-        $to_table   = $to_type::getTable();
-        $to_fk      = getForeignKeyFieldForTable($to_table);
+
+        $to_table        = $to_type::getTable();
+        $to_alias_suffix = md5(serialize($to_type::getSystemSQLCriteria()));
+        $to_table_alias  = $to_table . ($to_alias_suffix !== '' ? '_' . $to_alias_suffix : '');
+        $to_fk           = getForeignKeyFieldForTable($to_table);
+        $to_criteria     = $to_type::getSystemSQLCriteria($to_table_alias);
 
         $to_obj        = getItemForItemtype($to_type);
         $to_entity_restrict_criteria = $to_obj->isField('entities_id') ? getEntitiesRestrictCriteria($to_table) : [];
@@ -2743,16 +2760,16 @@ final class SQLProvider implements SearchProviderInterface
                     ]
                 ];
             }
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $items_softwareversions_table => 'items_id',
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         [
                             'AND' => [
                                 "$items_softwareversions_table.itemtype" => $to_type,
-                            ] + $to_entity_restrict_criteria
+                            ] + $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
@@ -2788,13 +2805,13 @@ final class SQLProvider implements SearchProviderInterface
                     ]
                 ];
             }
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $softwareversions_table => 'softwares_id',
-                        $to_table => 'id',
-                    ]
+                        $to_table_alias => 'id',
+                    ] + $to_criteria
                 ];
             }
             $softwarelicenses_table = "glpi_softwarelicenses{$alias_suffix}";
@@ -2802,7 +2819,7 @@ final class SQLProvider implements SearchProviderInterface
                 $already_link_tables2[] = $softwarelicenses_table;
                 $joins['LEFT JOIN']["`glpi_softwarelicenses` AS `$softwarelicenses_table`"] = [
                     'ON' => [
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         $softwarelicenses_table => 'softwares_id',
                         [
                             'AND' => getEntitiesRestrictCriteria($softwarelicenses_table, '', '', true)
@@ -2825,16 +2842,16 @@ final class SQLProvider implements SearchProviderInterface
                     ]
                 ];
             }
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $infocom_alias => 'items_id',
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         [
                             'AND' => [
                                 "$infocom_alias.itemtype" => $to_type,
-                            ] + $to_entity_restrict_criteria
+                            ] + $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
@@ -2859,15 +2876,15 @@ final class SQLProvider implements SearchProviderInterface
                     ]
                 ];
             }
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $infocom_alias => $to_fk,
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         [
                             'AND' => $to_entity_restrict_criteria
-                        ]
+                        ] + $to_criteria
                     ]
                 ];
             }
@@ -2886,16 +2903,16 @@ final class SQLProvider implements SearchProviderInterface
                     ]
                 ];
             }
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $reservationitems_alias => 'items_id',
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         [
                             'AND' => [
                                 "$reservationitems_alias.itemtype" => $to_type,
-                            ] + $to_entity_restrict_criteria
+                            ] + $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
@@ -2920,14 +2937,14 @@ final class SQLProvider implements SearchProviderInterface
                     ]
                 ];
             }
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $reservationitems_alias => 'id',
-                        $to_table => 'reservationitems_id',
+                        $to_table_alias => 'reservationitems_id',
                         [
-                            'AND' => $to_entity_restrict_criteria
+                            'AND' => $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
@@ -2955,60 +2972,60 @@ final class SQLProvider implements SearchProviderInterface
 
         if ($from_obj && $from_obj->isField($to_fk)) {
             // $from_table has a foreign key corresponding to $to_table
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $from_table => $to_fk,
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         [
-                            'AND' => $to_entity_restrict_criteria
+                            'AND' => $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
             }
         } else if ($to_obj && $to_obj->isField($from_fk)) {
             // $to_table has a foreign key corresponding to $from_table
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $from_table => 'id',
-                        $to_table => $from_fk,
+                        $to_table_alias => $from_fk,
                         [
-                            'AND' => $to_entity_restrict_criteria
+                            'AND' => $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
             }
         } else if ($from_obj && $from_obj->isField('itemtype') && $from_obj->isField('items_id')) {
             // $from_table has items_id/itemtype fields
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $from_table => 'items_id',
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         [
                             'AND' => [
                                 "$from_table.itemtype" => $to_type,
-                            ] + $to_entity_restrict_criteria
+                            ] + $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
             }
         } else if ($to_obj && $to_obj->isField('itemtype') && $to_obj->isField('items_id')) {
             // $to_table has items_id/itemtype fields
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $from_table => 'id',
-                        $to_table => 'items_id',
+                        $to_table_alias => 'items_id',
                         [
                             'AND' => [
-                                "$to_table.itemtype" => $from_type,
-                            ] + $to_entity_restrict_criteria
+                                "$to_table_alias.itemtype" => $from_type,
+                            ] + $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
@@ -3032,14 +3049,14 @@ final class SQLProvider implements SearchProviderInterface
                     ]
                 ];
             }
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $items_table_alias => 'items_id',
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         [
-                            'AND' => $to_entity_restrict_criteria
+                            'AND' => $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];
@@ -3063,14 +3080,14 @@ final class SQLProvider implements SearchProviderInterface
                     ]
                 ];
             }
-            if (!in_array($to_table, $already_link_tables2, true)) {
-                $already_link_tables2[] = $to_table;
-                $joins['LEFT JOIN'][$to_table] = [
+            if (!in_array($to_table_alias, $already_link_tables2, true)) {
+                $already_link_tables2[] = $to_table_alias;
+                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
                     'ON' => [
                         $items_table_alias => $to_fk,
-                        $to_table => 'id',
+                        $to_table_alias => 'id',
                         [
-                            'AND' => $to_entity_restrict_criteria
+                            'AND' => $to_entity_restrict_criteria + $to_criteria
                         ]
                     ]
                 ];

@@ -313,11 +313,11 @@ abstract class Asset extends CommonDBTM
         return $search_options;
     }
 
-    public static function getSystemSQLCriteria(): array
+    public static function getSystemSQLCriteria(?string $tablename = null): array
     {
         // Keep only items from current definition must be shown.
         $criteria = [
-            AssetDefinition::getForeignKeyField() => static::getDefinition()->getID(),
+            ($tablename !== null ? $tablename . '.' : '' ) . AssetDefinition::getForeignKeyField() => static::getDefinition()->getID(),
         ];
 
         // Add another layer to the array to prevent losing duplicates keys if the
