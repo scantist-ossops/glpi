@@ -194,15 +194,14 @@ final class SQLProvider implements SearchProviderInterface
             // $NAME = "META";
             if ($meta_type::getTable() !== $table) {
                 $addmeta = "_" . $meta_type;
-                $addtable  .= $addmeta;
-                $addtable2 .= $addmeta;
             } else {
                 $meta_suffix = md5(serialize($meta_type::getSystemSQLCriteria()));
                 if ($meta_suffix !== '') {
                     $addmeta = '_' . $meta_suffix;
                 }
             }
-            $table .= $addmeta;
+            $addtable  .= $addmeta;
+            $addtable2 .= $addmeta;
         }
 
         // Plugin can override core definition for its type
@@ -2343,10 +2342,18 @@ final class SQLProvider implements SearchProviderInterface
         $addmetanum = "";
         $rt         = $ref_table;
         $cleanrt    = $rt;
-        if ($meta && $meta_type::getTable() !== $new_table) {
-            $addmetanum = "_" . $meta_type;
-            $AS         = " AS `$nt$addmetanum`";
-            $nt         = $nt . $addmetanum;
+        if ($meta) {
+            if ($meta_type::getTable() !== $new_table) {
+                $addmetanum = "_" . $meta_type;
+                $AS         = " AS `$nt$addmetanum`";
+                $nt         = $nt . $addmetanum;
+             } else {
+                 $meta_suffix = md5(serialize($meta_type::getSystemSQLCriteria()));
+                 if ($meta_suffix !== '') {
+                     $nt .= '_' . $meta_suffix;
+                     $AS = " AS `$nt`";
+                 }
+             }
         }
 
         // Do not take into account standard linkfield
@@ -2412,6 +2419,7 @@ final class SQLProvider implements SearchProviderInterface
 
                         $interjoinparams = $tab['joinparams'] ?? [];
                         /** @noinspection SlowArrayOperationsInLoopInspection */
+
                         $before_criteria = array_merge_recursive($before_criteria, self::getLeftJoinCriteria(
                             $itemtype,
                             $rt,
@@ -2433,8 +2441,15 @@ final class SQLProvider implements SearchProviderInterface
                             if (!empty($complexjoin)) {
                                 $intertable .= "_" . $complexjoin;
                             }
-                            if ($meta && $meta_type::getTable() !== $cleanrt) {
-                                $intertable .= "_" . $meta_type;
+                            if ($meta) {
+                                if ($meta_type::getTable() !== $cleanrt) {
+                                    $intertable .= "_" . $meta_type;
+                                } else {
+                                    $meta_suffix = md5(serialize($meta_type::getSystemSQLCriteria()));
+                                    if ($meta_suffix !== '') {
+                                        $intertable .= '_' . $meta_suffix;
+                                    }
+                                }
                             }
                             $rt = $intertable;
                         }
@@ -2722,7 +2737,7 @@ final class SQLProvider implements SearchProviderInterface
         $to_criteria     = $to_type::getSystemSQLCriteria($to_table_alias);
 
         $to_obj        = getItemForItemtype($to_type);
-        $to_entity_restrict_criteria = $to_obj->isField('entities_id') ? getEntitiesRestrictCriteria($to_table) : [];
+        $to_entity_restrict_criteria = $to_obj->isField('entities_id') ? getEntitiesRestrictCriteria($to_table_alias) : [];
 
         $complexjoin = \Search::computeComplexJoinID($joinparams);
         $alias_suffix = ($complexjoin !== '' ? '_' . $complexjoin : '') . '_' . $to_type;
