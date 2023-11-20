@@ -9726,7 +9726,6 @@ CREATE TABLE `glpi_assets_assetdefinitions` (
   `comment` text,
   `is_active` tinyint NOT NULL DEFAULT '0',
   `capacities` JSON,
-  `profiles` JSON,
   `date_creation` timestamp NULL DEFAULT NULL,
   `date_mod` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
