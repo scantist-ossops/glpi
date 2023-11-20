@@ -50,7 +50,7 @@ class HasNotepadCapacity extends AbstractCapacity
 
     public function getSearchOptions(string $classname): array
     {
-        return Notepad::rawSearchOptionsToAdd($classname);
+        return Notepad::rawSearchOptionsToAdd();
     }
 
     public function onClassBootstrap(string $classname): void
