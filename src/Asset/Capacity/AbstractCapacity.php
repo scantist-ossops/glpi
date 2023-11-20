@@ -38,6 +38,8 @@ namespace Glpi\Asset\Capacity;
 use DisplayPreference;
 use Glpi\Asset\Asset;
 use Log;
+use Profile;
+use ProfileRight;
 
 /**
  * Abstract capacity that provides, among others, an empty implementation of some `\Glpi\Asset\Capacity\CapacityInterface`
@@ -165,5 +167,36 @@ abstract class AbstractCapacity implements CapacityInterface
         }
 
         return $ids;
+    }
+
+    /**
+     * Remove given rights from all profiles.
+     *
+     * @param string $rightname
+     * @param int[] $rights
+     * @return void
+     */
+    protected function removeRights(string $rightname, array $rights): void
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $profiles_iterator = $DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => Profile::getTable(),
+        ]);
+
+        foreach ($profiles_iterator as $profile_data) {
+            $profile_id = $profile_data['id'];
+
+            $profile_rights = ProfileRight::getProfileRights($profile_id, [$rightname])[$rightname] ?? 0;
+            foreach ($rights as $right) {
+                if (($profile_rights & $right) === $right) {
+                    $profile_rights ^= $right;
+                }
+            }
+
+            ProfileRight::updateProfileRights((int)$profile_id, [$rightname => $profile_rights]);
+        }
     }
 }

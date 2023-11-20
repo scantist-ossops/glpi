@@ -74,6 +74,7 @@ class HasNotepadCapacity extends AbstractCapacity
         // Clean display preferences
         $this->deleteDisplayPreferences($classname, $notepad_search_options);
 
-        // TODO Clean rights READNOTE/UPDATENOTE
+        // Clean rights
+        $this->removeRights($classname::$rightname, [READNOTE, UPDATENOTE]);
     }
 }

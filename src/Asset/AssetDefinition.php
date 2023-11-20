@@ -326,15 +326,17 @@ final class AssetDefinition extends CommonDBTM
         }
 
         if (array_key_exists('_profiles', $this->input)) {
+            $rightname = $this->getAssetRightname();
+
             foreach ($this->input['_profiles'] as $profile_id => $right_inputs) {
-                $right = 0;
+                $rights = 0;
                 foreach ($right_inputs as $right_value => $is_enabled) {
                     if ($is_enabled) {
-                        $right += (int)$right_value;
+                        $rights += (int)$right_value;
                     }
                 }
 
-                ProfileRight::updateProfileRights((int)$profile_id, [$this->getAssetRightname() => $right]);
+                ProfileRight::updateProfileRights((int)$profile_id, [$rightname => $rights]);
             }
         }
     }
