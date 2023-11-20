@@ -50,7 +50,7 @@ if (array_key_exists('id', $_REQUEST)) {
 } else {
     $definition_id = $_GET[$definition_fkey] ?? null;
     $definition    = new AssetDefinition();
-    $classname     = $definition->getFromDB($definition_id) ? $definition->getConcreteClassName() : null;
+    $classname     = $definition_id !== null && $definition->getFromDB((int)$definition_id) ? $definition->getConcreteClassName() : null;
     $asset         = $classname !== null && class_exists($classname) ? new $classname() : null;
 }
 

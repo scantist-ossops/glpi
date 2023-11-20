@@ -42,7 +42,7 @@ include('../../inc/includes.php');
 $definition_fkey = AssetDefinition::getForeignKeyField();
 $definition_id   = $_GET[$definition_fkey] ?? null;
 $definition      = new AssetDefinition();
-$classname       = $definition->getFromDB($definition_id) ? $definition->getConcreteClassName() : null;
+$classname       = $definition_id !== null && $definition->getFromDB((int)$definition_id) ? $definition->getConcreteClassName() : null;
 
 if ($classname === null || !class_exists($classname)) {
     Response::sendError(400, 'Bad request', Response::CONTENT_TYPE_TEXT_HTML);
