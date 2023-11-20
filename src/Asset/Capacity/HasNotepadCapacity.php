@@ -48,6 +48,11 @@ class HasNotepadCapacity extends AbstractCapacity
         return Notepad::getTypeName(Session::getPluralNumber());
     }
 
+    public function getSearchOptions(string $classname): array
+    {
+        return Notepad::rawSearchOptionsToAdd($classname);
+    }
+
     public function onClassBootstrap(string $classname): void
     {
         CommonGLPI::registerStandardTab($classname, Notepad::class, 80);

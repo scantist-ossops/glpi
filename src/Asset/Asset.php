@@ -294,7 +294,9 @@ abstract class Asset extends CommonDBTM
             'nodisplay'          => true,
         ];
 
-        // TODO Search options for capacities
+        foreach (static::getDefinition()->getEnabledCapacities() as $capacity) {
+            array_push($search_options, ...$capacity->getSearchOptions(static::class));
+        }
 
         foreach ($search_options as &$search_option) {
             if (

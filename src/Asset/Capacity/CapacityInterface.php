@@ -47,6 +47,14 @@ interface CapacityInterface
     public function getLabel(): string;
 
     /**
+     * Get the search options related to the capacity.
+     *
+     * @param string $classname
+     * @return array
+     */
+    public function getSearchOptions(string $classname): array;
+
+    /**
      * Method executed during asset classes bootstraping.
      *
      * @param string $classname

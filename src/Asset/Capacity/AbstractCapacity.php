@@ -56,6 +56,11 @@ abstract class AbstractCapacity implements CapacityInterface
     {
     }
 
+    public function getSearchOptions(string $classname): array
+    {
+        return [];
+    }
+
     public function onClassBootstrap(string $classname): void
     {
     }
