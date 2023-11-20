@@ -71,7 +71,7 @@ class HasNotepadCapacity extends AbstractCapacity
         $notepad = new Notepad();
         $notepad->deleteByCriteria(['itemtype' => $classname], force: true, history: false);
 
-        $notepad_search_options = Notepad::rawSearchOptionsToAdd($classname);
+        $notepad_search_options = Notepad::rawSearchOptionsToAdd();
 
         // Clean history related to notepad
         $this->deleteFieldsLogs($classname, $notepad_search_options);
