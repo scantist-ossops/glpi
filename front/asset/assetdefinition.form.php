@@ -61,6 +61,8 @@ if (isset($_POST['add'])) {
     }
     Html::back();
 } else if (isset($_POST['update'])) {
+    $asset_definition->check($_POST['id'], UPDATE);
+
     if (
         (bool)($_POST['_update_capacities'] ?? false)
         && !array_key_exists('capacities', $_POST)
@@ -68,7 +70,15 @@ if (isset($_POST['add'])) {
         // If no capacity is checked, `$_POST['capacities']` will not be sent in request.
         $_POST['capacities'] = [];
     }
-    $asset_definition->check($_POST['id'], UPDATE);
+
+    if (array_key_exists('_profiles', $_POST)) {
+        // Ensure profiles can be updated
+        foreach (array_keys($_POST['_profiles']) as $profile_id) {
+            $profile = new Profile();
+            $profile->check((int)$profile_id, UPDATE);
+        }
+    }
+
     if ($asset_definition->update($_POST)) {
         Event::log(
             $_POST['id'],

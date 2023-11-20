@@ -42,6 +42,7 @@ use Glpi\Asset\Capacity\CapacityInterface;
 use Glpi\DBAL\QueryExpression;
 use Glpi\DBAL\QueryFunction;
 use Profile;
+use ProfileRight;
 use Session;
 
 final class AssetDefinition extends CommonDBTM
@@ -143,7 +144,9 @@ final class AssetDefinition extends CommonDBTM
         /** @var \DBmysql $DB */
         global $DB;
 
+        $rightname       = $this->getAssetRightname();
         $possible_rights = $this->getPossibleAssetRights();
+
         $profiles_data   = iterator_to_array(
             $DB->request([
                 'SELECT' => ['id', 'name'],
@@ -163,9 +166,9 @@ final class AssetDefinition extends CommonDBTM
         $matrix_rows = [];
         foreach ($profiles_data as $profile_data) {
             $profile_id = $profile_data['id'];
-            $profile_rights = $this->getEnabledRightsForProfile($profile_id);
+            $profile_rights = ProfileRight::getProfileRights($profile_id, [$rightname])[$rightname] ?? 0;
 
-            $checkbox_key = sprintf('profiles[%d]', $profile_id);
+            $checkbox_key = sprintf('_profiles[%d]', $profile_id);
 
             $nb_cb_per_row[$checkbox_key] = [
                 'checked' => 0,
@@ -177,7 +180,7 @@ final class AssetDefinition extends CommonDBTM
                 'columns' => []
             ];
             foreach (array_keys($possible_rights) as $right_value) {
-                $checked = in_array($right_value, $profile_rights, true);
+                $checked = $profile_rights & $right_value;
                 $row['columns'][$right_value] = [
                     'checked' => $checked,
                 ];
@@ -203,9 +206,6 @@ final class AssetDefinition extends CommonDBTM
     {
         if (!array_key_exists('capacities', $input)) {
             $input['capacities'] = []; // ensure default capacities value will be a valid array
-        }
-        if (!array_key_exists('profiles', $input)) {
-            $input['profiles'] = []; // ensure default profiles value will be a valid array
         }
         return $this->prepareInput($input);
     }
@@ -256,9 +256,9 @@ final class AssetDefinition extends CommonDBTM
             $input['capacities'] = json_encode($input['capacities']);
         }
 
-        if (array_key_exists('profiles', $input)) {
+        if (array_key_exists('_profiles', $input)) {
             $is_valid = true;
-            if (!is_array($input['profiles'])) {
+            if (!is_array($input['_profiles'])) {
                 $is_valid = false;
             } else {
                 $profiles_iterator = $DB->request([
@@ -267,7 +267,7 @@ final class AssetDefinition extends CommonDBTM
                 ]);
                 $available_profiles = array_column(iterator_to_array($profiles_iterator), 'id');
                 $possible_rights    = array_keys($this->getPossibleAssetRights());
-                foreach ($input['profiles'] as $profile_id => $rights) {
+                foreach ($input['_profiles'] as $profile_id => $rights) {
                     if (!in_array($profile_id, $available_profiles)) {
                         $is_valid = false;
                         break;
@@ -291,13 +291,12 @@ final class AssetDefinition extends CommonDBTM
                 );
                 return false;
             }
-            $input['profiles'] = json_encode($input['profiles']);
         }
 
         return $input;
     }
 
-    public function post_updateItem($history = 1)
+    public function post_updateItem($history = true)
     {
         if (in_array('capacities', $this->updates)) {
             // When capabilities are removed, trigger the cleaning of data related to this capacity.
@@ -325,26 +324,19 @@ final class AssetDefinition extends CommonDBTM
                 $capacity->onCapacityDisabled($this->getConcreteClassName());
             }
         }
-    }
 
-    /**
-     * Check if connected user has given right on assets from current definition.
-     *
-     * @param int $right
-     * @return bool
-     */
-    public function hasRightOnAssets(int $right): bool
-    {
-        $profile_id = $_SESSION['glpiactiveprofile']['id'] ?? null;
-        if ($profile_id === null) {
-            return false;
+        if (array_key_exists('_profiles', $this->input)) {
+            foreach ($this->input['_profiles'] as $profile_id => $right_inputs) {
+                $right = 0;
+                foreach ($right_inputs as $right_value => $is_enabled) {
+                    if ($is_enabled) {
+                        $right += (int)$right_value;
+                    }
+                }
+
+                ProfileRight::updateProfileRights((int)$profile_id, [$this->getAssetRightname() => $right]);
+            }
         }
-
-        return in_array(
-            $right,
-            $this->getEnabledRightsForProfile($profile_id),
-            true
-        );
     }
 
     /**
@@ -421,6 +413,17 @@ final class AssetDefinition extends CommonDBTM
     }
 
     /**
+     * Get the definition's concrete asset rightname.
+     *
+     * @param AssetDefinition $definition
+     * @return string
+     */
+    public function getAssetRightname(): string
+    {
+        return sprintf('asset_%d', $this->getID());
+    }
+
+    /**
      * Indicates whether the given capacity is enabled.
      *
      * @param CapacityInterface $capacity
@@ -457,36 +460,6 @@ final class AssetDefinition extends CommonDBTM
         $class = $this->getConcreteClassName();
         $object = new $class();
         return $object->getRights();
-    }
-
-    /**
-     * Get enabled rights for profile.
-     *
-     * @param int $profile_id
-     * @return int[]
-     */
-    private function getEnabledRightsForProfile(int $profile_id): array
-    {
-        // TODO Refactor this part to push data into `ProfileRight`
-        // This is required to be ble to correctly handle notepad rights
-        // e.g. on save: ProfileRight::updateProfileRights($profile_id, $profile_matrix);
-
-        $profiles_entries = $this->getDecodedJsonField('profiles', 'is_array'); // TODO Use a dedicated check
-
-        $enabled_rights = [];
-
-        foreach ($profiles_entries as $key => $rights) {
-            if ((int)$key === $profile_id) {
-                foreach ($rights as $right_value => $is_enabled) {
-                    if ((bool)$is_enabled) {
-                        $enabled_rights[] = $right_value;
-                    }
-                }
-                break;
-            }
-        }
-
-        return $enabled_rights;
     }
 
     /**

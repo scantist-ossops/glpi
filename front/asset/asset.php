@@ -33,7 +33,6 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Asset\Asset;
 use Glpi\Asset\AssetDefinition;
 use Glpi\Http\Response;
 use Glpi\Search\SearchEngine;
@@ -49,19 +48,7 @@ if ($classname === null || !class_exists($classname)) {
     Response::sendError(400, 'Bad request', Response::CONTENT_TYPE_TEXT_HTML);
 }
 
-$definition_id = (int)($_GET[AssetDefinition::getForeignKeyField()] ?? null);
-$definition = new AssetDefinition();
-if (
-    $definition_id === 0
-    || !$definition->getFromDB($definition_id)
-) {
-    Response::sendError(400, 'Bad request', Response::CONTENT_TYPE_TEXT_HTML);
-}
-
-if (!$definition->hasRightOnAssets(READ)) {
-    Html::displayRightError(sprintf('User is missing the %d (%s) right for "%s" assets', READ, 'READ', $definition->getName()));
-    exit();
-}
+Session::checkRight($classname::$rightname, READ);
 
 Html::header($classname::getTypeName(Session::getPluralNumber()), $_SERVER['PHP_SELF'], 'assets', $classname);
 

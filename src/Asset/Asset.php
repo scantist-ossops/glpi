@@ -37,13 +37,10 @@ namespace Glpi\Asset;
 
 use CommonDBTM;
 use Glpi\Application\View\TemplateRenderer;
-use Glpi\Plugin\Hooks;
 use Entity;
 use Group;
 use Location;
 use Manufacturer;
-use Plugin;
-use Session;
 use State;
 use Toolbox;
 use User;
@@ -151,145 +148,6 @@ abstract class Asset extends CommonDBTM
         }
 
         return $asset;
-    }
-
-    public static function canView()
-    {
-        return static::hasGlobalRight(READ);
-    }
-
-    public static function canCreate()
-    {
-        return static::hasGlobalRight(CREATE);
-    }
-
-    public static function canUpdate()
-    {
-        return static::hasGlobalRight(UPDATE);
-    }
-
-    public static function canDelete()
-    {
-        return static::hasGlobalRight(DELETE);
-    }
-
-    public static function canPurge()
-    {
-        return static::hasGlobalRight(PURGE);
-    }
-
-    /**
-     * Check if current user has the required global right.
-     *
-     * @param int $right
-     * @return bool
-     */
-    private static function hasGlobalRight(int $right): bool
-    {
-        return static::getDefinition()->hasRightOnAssets($right);
-    }
-
-    public function canViewItem()
-    {
-        return $this->hasItemRight(READ) && parent::canViewItem();
-    }
-
-    public function canCreateItem()
-    {
-        return $this->hasItemRight(CREATE) && parent::canCreateItem();
-    }
-
-    public function canUpdateItem()
-    {
-        return $this->hasItemRight(UPDATE) && parent::canUpdateItem();
-    }
-
-    public function canDeleteItem()
-    {
-        return $this->hasItemRight(DELETE) && parent::canDeleteItem();
-    }
-
-    public function canPurgeItem()
-    {
-        return $this->hasItemRight(PURGE) && parent::canPurgeItem();
-    }
-
-    public function can($ID, $right, array &$input = null)
-    {
-        $ID = (int)$ID;
-
-        if ($this->isNewID($ID)) {
-            if (!isset($this->fields['id'])) {
-                $this->getEmpty();
-            }
-
-            if (is_array($input)) {
-                $this->input = $input;
-            }
-
-            // Rely only on `canCreateItem()` that will check rights based on asset definition.
-            return $this->canCreateItem();
-        }
-
-        if ((!isset($this->fields['id']) || $this->fields['id'] != $ID) && !$this->getFromDB($ID)) {
-            // Ensure the right item is loaded.
-            return false;
-        }
-        $this->right = $right;
-
-        Plugin::doHook(Hooks::ITEM_CAN, $this);
-        if ($this->right !== $right) {
-            return false;
-        }
-        $this->right = null;
-
-        switch ($right) {
-            case READ:
-                // Rely only on `canViewItem()` that will check rights based on asset definition.
-                return $this->canViewItem();
-
-            case UPDATE:
-                // Rely only on `canUpdateItem()` that will check rights based on asset definition.
-                return $this->canUpdateItem();
-
-            case DELETE:
-                // Rely only on `canDeleteItem()` that will check rights based on asset definition.
-                return $this->canDeleteItem();
-
-            case PURGE:
-                // Rely only on `canPurgeItem()` that will check rights based on asset definition.
-                return $this->canPurgeItem();
-
-            case CREATE:
-                // Rely only on `canPurgeItem()` that will check rights based on asset definition.
-                return $this->canCreateItem();
-
-            case 'recursive':
-                // Can make recursive if recursive access to entity
-                return Session::haveAccessToEntity($this->getEntityID())
-                    && Session::haveRecursiveAccessToEntity($this->getEntityID());
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if current user has the required right on current item.
-     *
-     * @param int $right
-     * @return bool
-     */
-    private function hasItemRight(int $right): bool
-    {
-        $definition_id = $this->isNewItem()
-            ? ($this->input[AssetDefinition::getForeignKeyField()] ?? 0)
-            : ($this->fields[AssetDefinition::getForeignKeyField()] ?? 0);
-        $definition = new AssetDefinition();
-        if ($definition_id === 0 || !$definition->getFromDB($definition_id)) {
-            return false;
-        }
-
-        return $definition->hasRightOnAssets($right);
     }
 
     public function rawSearchOptions()

@@ -250,7 +250,7 @@ final class AssetDefinitionManager
      */
     private function loadConcreteClass(AssetDefinition $definition): void
     {
-        $rightname = $this->getAssetRightname($definition);
+        $rightname = $definition->getAssetRightname();
 
         // Static properties must be defined in each concrete class otherwise they will be shared
         // accross all concrete classes, and so would be overriden by the values from the last loaded class.
@@ -268,16 +268,5 @@ PHP
         // to make the property publicly writable.
         $reflected_class = new \ReflectionClass($definition->getConcreteClassName());
         $reflected_class->setStaticPropertyValue('definition', $definition);
-    }
-
-    /**
-     * Returns the rightname to use for given definition.
-     *
-     * @param AssetDefinition $definition
-     * @return string
-     */
-    private function getAssetRightname(AssetDefinition $definition): string
-    {
-        return sprintf('asset_%d', $definition->getID());
     }
 }
