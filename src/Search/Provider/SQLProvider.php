@@ -191,15 +191,7 @@ final class SQLProvider implements SearchProviderInterface
 
         $addmeta = "";
         if ($meta) {
-            // $NAME = "META";
-            if ($meta_type::getTable() !== $table) {
-                $addmeta = "_" . $meta_type;
-            } else {
-                $meta_suffix = md5(serialize($meta_type::getSystemSQLCriteria()));
-                if ($meta_suffix !== '') {
-                    $addmeta = '_' . $meta_suffix;
-                }
-            }
+            $addmeta = self::getMetaTableUniqueSuffix($table, $meta_type);
             $addtable  .= $addmeta;
             $addtable2 .= $addmeta;
         }
@@ -1071,14 +1063,7 @@ final class SQLProvider implements SearchProviderInterface
 
         $addmeta = "";
         if ($meta) {
-            if ($itemtype::getTable() !== $inittable) {
-                $addmeta = "_" . $itemtype;
-            } else {
-                $meta_suffix = md5(serialize($itemtype::getSystemSQLCriteria()));
-                if ($meta_suffix !== '') {
-                    $addmeta = '_' . $meta_suffix;
-                }
-            }
+            $addmeta = self::getMetaTableUniqueSuffix($inittable, $itemtype);
             $table .= $addmeta;
         }
 
@@ -2343,17 +2328,9 @@ final class SQLProvider implements SearchProviderInterface
         $rt         = $ref_table;
         $cleanrt    = $rt;
         if ($meta) {
-            if ($meta_type::getTable() !== $new_table) {
-                $addmetanum = "_" . $meta_type;
-                $AS         = " AS `$nt$addmetanum`";
-                $nt         = $nt . $addmetanum;
-             } else {
-                 $meta_suffix = md5(serialize($meta_type::getSystemSQLCriteria()));
-                 if ($meta_suffix !== '') {
-                     $nt .= '_' . $meta_suffix;
-                     $AS = " AS `$nt`";
-                 }
-             }
+            $addmetanum = self::getMetaTableUniqueSuffix($new_table, $meta_type);
+            $AS         = " AS `$nt$addmetanum`";
+            $nt         = $nt . $addmetanum;
         }
 
         // Do not take into account standard linkfield
@@ -2419,7 +2396,6 @@ final class SQLProvider implements SearchProviderInterface
 
                         $interjoinparams = $tab['joinparams'] ?? [];
                         /** @noinspection SlowArrayOperationsInLoopInspection */
-
                         $before_criteria = array_merge_recursive($before_criteria, self::getLeftJoinCriteria(
                             $itemtype,
                             $rt,
@@ -2442,14 +2418,7 @@ final class SQLProvider implements SearchProviderInterface
                                 $intertable .= "_" . $complexjoin;
                             }
                             if ($meta) {
-                                if ($meta_type::getTable() !== $cleanrt) {
-                                    $intertable .= "_" . $meta_type;
-                                } else {
-                                    $meta_suffix = md5(serialize($meta_type::getSystemSQLCriteria()));
-                                    if ($meta_suffix !== '') {
-                                        $intertable .= '_' . $meta_suffix;
-                                    }
-                                }
+                                $intertable .= self::getMetaTableUniqueSuffix($cleanrt, $meta_type);
                             }
                             $rt = $intertable;
                         }
@@ -2730,11 +2699,11 @@ final class SQLProvider implements SearchProviderInterface
         $from_table = $from_type::getTable();
         $from_fk    = getForeignKeyFieldForTable($from_table);
 
-        $to_table        = $to_type::getTable();
-        $to_alias_suffix = md5(serialize($to_type::getSystemSQLCriteria()));
-        $to_table_alias  = $to_table . ($to_alias_suffix !== '' ? '_' . $to_alias_suffix : '');
-        $to_fk           = getForeignKeyFieldForTable($to_table);
-        $to_criteria     = $to_type::getSystemSQLCriteria($to_table_alias);
+        $to_table         = $to_type::getTable();
+        $to_fk            = getForeignKeyFieldForTable($to_table);
+        $to_table_alias   = $to_table . self::getMetaTableUniqueSuffix($to_table, $to_type);
+        $to_criteria      = $to_type::getSystemSQLCriteria($to_table_alias);
+        $to_table_join_id = $to_table . ($to_table_alias !== $to_table ? ' AS ' . $to_table_alias : '');
 
         $to_obj        = getItemForItemtype($to_type);
         $to_entity_restrict_criteria = $to_obj->isField('entities_id') ? getEntitiesRestrictCriteria($to_table_alias) : [];
@@ -2777,7 +2746,7 @@ final class SQLProvider implements SearchProviderInterface
             }
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $items_softwareversions_table => 'items_id',
                         $to_table_alias => 'id',
@@ -2822,7 +2791,7 @@ final class SQLProvider implements SearchProviderInterface
             }
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $softwareversions_table => 'softwares_id',
                         $to_table_alias => 'id',
@@ -2859,7 +2828,7 @@ final class SQLProvider implements SearchProviderInterface
             }
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $infocom_alias => 'items_id',
                         $to_table_alias => 'id',
@@ -2893,7 +2862,7 @@ final class SQLProvider implements SearchProviderInterface
             }
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $infocom_alias => $to_fk,
                         $to_table_alias => 'id',
@@ -2920,7 +2889,7 @@ final class SQLProvider implements SearchProviderInterface
             }
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $reservationitems_alias => 'items_id',
                         $to_table_alias => 'id',
@@ -2954,7 +2923,7 @@ final class SQLProvider implements SearchProviderInterface
             }
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $reservationitems_alias => 'id',
                         $to_table_alias => 'reservationitems_id',
@@ -2989,7 +2958,7 @@ final class SQLProvider implements SearchProviderInterface
             // $from_table has a foreign key corresponding to $to_table
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $from_table => $to_fk,
                         $to_table_alias => 'id',
@@ -3003,7 +2972,7 @@ final class SQLProvider implements SearchProviderInterface
             // $to_table has a foreign key corresponding to $from_table
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $from_table => 'id',
                         $to_table_alias => $from_fk,
@@ -3017,7 +2986,7 @@ final class SQLProvider implements SearchProviderInterface
             // $from_table has items_id/itemtype fields
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $from_table => 'items_id',
                         $to_table_alias => 'id',
@@ -3033,7 +3002,7 @@ final class SQLProvider implements SearchProviderInterface
             // $to_table has items_id/itemtype fields
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $from_table => 'id',
                         $to_table_alias => 'items_id',
@@ -3066,7 +3035,7 @@ final class SQLProvider implements SearchProviderInterface
             }
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $items_table_alias => 'items_id',
                         $to_table_alias => 'id',
@@ -3097,7 +3066,7 @@ final class SQLProvider implements SearchProviderInterface
             }
             if (!in_array($to_table_alias, $already_link_tables2, true)) {
                 $already_link_tables2[] = $to_table_alias;
-                $joins['LEFT JOIN'][$to_table . ' AS ' . $to_table_alias] = [
+                $joins['LEFT JOIN'][$to_table_join_id] = [
                     'ON' => [
                         $items_table_alias => $to_fk,
                         $to_table_alias => 'id',
@@ -6176,5 +6145,28 @@ HTML;
             $tab[0] = null;
         }
         return $tab;
+    }
+
+    /**
+     * Returns the suffix to add to table identifiers joined for meta items.
+     *
+     * @param string $initial_table
+     * @param string $meta_itemtype
+     * @return string
+     */
+    private static function getMetaTableUniqueSuffix(string $initial_table, string $meta_itemtype): string
+    {
+        $suffix = '';
+
+        if ($meta_itemtype::getTable() !== $initial_table) {
+            $suffix .= "_" . $meta_itemtype;
+        }
+
+        $system_criteria = $meta_itemtype::getSystemSQLCriteria();
+        if (count($system_criteria)) {
+            $suffix .= '_' . md5(serialize($system_criteria));
+        }
+
+        return $suffix;
     }
 }
