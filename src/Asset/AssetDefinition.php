@@ -101,6 +101,9 @@ final class AssetDefinition extends CommonDBTM
                 case 1:
                     $item->showCapacitiesForm();
                     break;
+                case 2:
+                    // 2 is reserved for "Fields" form
+                    break;
                 case 3:
                     $item->showProfilesForm();
                     break;
@@ -227,22 +230,7 @@ final class AssetDefinition extends CommonDBTM
         global $DB;
 
         if (array_key_exists('capacities', $input)) {
-            $is_valid = true;
-            if (!is_array($input['capacities'])) {
-                $is_valid = false;
-            } else {
-                $available_capacities = array_map(
-                    fn ($capacity) => $capacity::class,
-                    AssetDefinitionManager::getInstance()->getAvailableCapacities()
-                );
-                foreach ($input['capacities'] as $classname) {
-                    if (!in_array($classname, $available_capacities)) {
-                        $is_valid = false;
-                        break;
-                    }
-                }
-            }
-            if (!$is_valid) {
+            if (!$this->validateCapacityArray($input['capacities'])) {
                 Session::addMessageAfterRedirect(
                     sprintf(
                         __('The following field has an incorrect value: "%s".'),
@@ -266,14 +254,16 @@ final class AssetDefinition extends CommonDBTM
                     'FROM'   => Profile::getTable(),
                 ]);
                 $available_profiles = array_column(iterator_to_array($profiles_iterator), 'id');
-                $possible_rights    = array_keys($this->getPossibleAssetRights());
                 foreach ($input['_profiles'] as $profile_id => $rights) {
                     if (!in_array($profile_id, $available_profiles)) {
                         $is_valid = false;
                         break;
                     }
-                    foreach (array_keys($rights) as $right_value) {
-                        if (!in_array($right_value, $possible_rights)) {
+                    foreach ($rights as $right_value => $is_enabled) {
+                        if (
+                            !filter_var($right_value, FILTER_VALIDATE_INT)
+                            || filter_var($is_enabled, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) === null
+                        ) {
                             $is_valid = false;
                             break;
                         }
@@ -433,7 +423,7 @@ final class AssetDefinition extends CommonDBTM
      */
     public function hasCapacityEnabled(CapacityInterface $capacity): bool
     {
-        $enabled_capacities = $this->getDecodedJsonField('capacities', 'is_array'); // TODO Use a dedicated check
+        $enabled_capacities = $this->getDecodedJsonField('capacities', [$this, 'validateCapacityArray']);
         return in_array($capacity::class, $enabled_capacities);
     }
 
@@ -480,5 +470,33 @@ final class AssetDefinition extends CommonDBTM
             $values = [];
         }
         return $values;
+    }
+
+    /**
+     * Validate that the given capacities array contains valid values.
+     *
+     * @param mixed $capacities
+     * @return bool
+     */
+    private function validateCapacityArray(mixed $capacities): bool
+    {
+        if (!is_array($capacities)) {
+            return false;
+        }
+
+        $is_valid = true;
+
+        $available_capacities = array_map(
+            fn ($capacity) => $capacity::class,
+            AssetDefinitionManager::getInstance()->getAvailableCapacities()
+        );
+        foreach ($capacities as $classname) {
+            if (!in_array($classname, $available_capacities)) {
+                $is_valid = false;
+                break;
+            }
+        }
+
+        return $is_valid;
     }
 }

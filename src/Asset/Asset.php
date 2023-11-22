@@ -123,6 +123,7 @@ abstract class Asset extends CommonDBTM
             return false;
         }
 
+        // Load the asset definition corresponding to given asset ID
         $definition_request = [
             'INNER JOIN' => [
                 self::getTable()  => [
@@ -141,6 +142,7 @@ abstract class Asset extends CommonDBTM
             return false;
         }
 
+        // Instanciate concrete class
         $asset_class = $definition->getConcreteClassName(true);
         $asset = new $asset_class();
         if (!$asset->getFromDB($id)) {
@@ -347,5 +349,45 @@ abstract class Asset extends CommonDBTM
             'params' => $options,
         ]);
         return true;
+    }
+
+    public function prepareInputForAdd($input)
+    {
+        $input = $this->prepareDefinitionInput($input);
+        if ($input === false) {
+            return false;
+        }
+
+        return $input;
+    }
+
+    public function prepareInputForUpdate($input)
+    {
+        $input = $this->prepareDefinitionInput($input);
+        if ($input === false) {
+            return false;
+        }
+
+        return $input;
+    }
+
+    /**
+     * Ensure definition input corresponds to the current concrete class.
+     *
+     * @param array $input
+     * @return array
+     */
+    private function prepareDefinitionInput(array $input): array
+    {
+        $definition_fkey = AssetDefinition::getForeignKeyField();
+        $definition_id   = static::getDefinition()->getID();
+
+        if (array_key_exists($definition_fkey, $input) && (int)$input[$definition_fkey] !== $definition_id) {
+            throw new \RuntimeException('Asset definition does not match the current concrete class.');
+        }
+
+        $input[$definition_fkey] = $definition_id;
+
+        return $input;
     }
 }
